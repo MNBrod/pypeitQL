@@ -1,33 +1,5 @@
 # This is open-source software licensed under a BSD license.
 # Please see the file LICENSE.txt for details.
-"""
-A plugin for browsing the local filesystem and loading files.
-
-**Plugin Type: Global or Local**
-
-``FBrowser`` is a hybrid global/local plugin, which means it can be invoked
-in either fashion.  If invoked as a local plugin then it is associated
-with a channel, and an instance can be opened for each channel.  It can
-also be opened as a global plugin.
-
-**Usage**
-
-Navigate the directory tree until you come to the location files
-you want to load.  You can double click a file to load it into the
-associated channel, or drag a file into a channel viewer window to
-load it into any channel viewer.
-
-Multiple files can be selected by holding down ``Ctrl`` (``Command`` on Mac),
-or ``Shift``-clicking to select a contiguous range of files.
-
-You may also enter full path to the desired image(s) in the text box such
-as ``/my/path/to/image.fits``, ``/my/path/to/image.fits[ext]``, or
-``/my/path/to/image*.fits[extname,*]``.
-
-Because it is a local plugin, ``FBrowser`` will remember its last
-directory if closed and then restarted.
-
-"""
 import pdb
 
 import glob
@@ -48,11 +20,8 @@ from ginga.canvas.types.basic import Polygon
 import numpy as np
 from pypeit import edgetrace, io, slittrace
 
-try:
-    from astropy.io import fits as pyfits
-    have_astropy = True
-except ImportError:
-    have_astropy = False
+from astropy.io import fits as pyfits
+
 
 __all__ = ['QLDisplay']
 _patt = re.compile(r'"([^ "]+)"')
@@ -66,35 +35,37 @@ class QLDisplay(GingaPlugin.GlobalPlugin):
 
         keywords = [('Object', 'OBJECT'),
                     ('Date', 'DATE-OBS'),
-                    ('Time UT', 'UT')]
+                    ('Time UT', 'UT'),
+                    ('OFNAME', 'OFNAME'),
+                    ('Target', 'TARGNAME')
+                    ]
         columns = [('Type', 'icon'),
                    ('Name', 'name'),
-                   ('Size', 'st_size_str'),
-                   ('Mode', 'st_mode_oct'),
-                   ('Last Changed', 'st_mtime_str')]
+                   ('OFNAME', 'OFNAME'),
+                   ('Target', 'Target'),
+                   ('Object', 'Object'),]
 
         self.jumpinfo = []
 
         # setup plugin preferences
-        prefs = self.fv.get_preferences()
-        self.settings = prefs.create_category('plugin_FBrowser')
-        self.settings.add_defaults(home_path=paths.home,
-                                   scan_fits_headers=False,
-                                   scan_limit=100,
-                                   keywords=keywords,
-                                   columns=columns,
-                                   color_alternate_rows=True,
-                                   max_rows_for_col_resize=5000)
-        self.settings.load(onError='silent')
+        self.settings = {
+            "home_path" : paths.home,
+            "scan_fits_headers" : True,
+            "scan_limit" : 100,
+            "keywords" : keywords,
+            "columns" : columns,
+            "color_alternate_rows" : True,
+            "max_rows_for_col_resize" : 5000
+        }
 
         homedir = self.settings.get('home_path', None)
         if homedir is None or not os.path.isdir(homedir):
             homedir = paths.home
         # self.do_scanfits = self.settings.get('scan_fits_headers', False)
-        self.scan_limit = self.settings.get('scan_limit', 100)
-        self.keywords = self.settings.get('keywords', keywords)
-        self.columns = self.settings.get('columns', columns)
-        self.moving_cursor = False        
+        # self.scan_limit = self.settings.get('scan_limit', 100)
+        # self.keywords = self.settings.get('keywords', keywords)
+        # self.columns = self.settings.get('columns', columns)
+        # self.moving_cursor = False        
 
         # Make icons
         icondir = self.fv.iconpath
@@ -631,6 +602,10 @@ class LocalInterface(DRPInterface):
 
             tree_dict[entry_key] = bnch
 
+            import pprint
+            print(entry_key)
+            pprint.pprint(bnch)
+
         self.tree_dict = tree_dict
 
         # Do we need to resize column widths?
@@ -778,13 +753,10 @@ class LocalInterface(DRPInterface):
         bnch = Bunch.Bunch(na_dict)
         try:
             filestat = os.stat(path)
-            bnch.update(dict(path=path, name=filename, type=ftype,
-                            st_mode=filestat.st_mode,
-                            st_mode_oct=oct(filestat.st_mode),
-                            st_size=filestat.st_size,
-                            st_size_str=str(filestat.st_size),
-                            st_mtime=filestat.st_mtime,
-                            st_mtime_str=time.ctime(filestat.st_mtime)))
+            bnch.update(dict(path=path,
+                            name=filename,
+                            type=ftype
+                            ))
         except OSError as e:
             # TODO: identify some kind of error with this path
             bnch.update(dict(path=path, name=filename, type=ftype,
@@ -819,11 +791,14 @@ class LocalInterface(DRPInterface):
         filelist.insert(0, os.path.join(dirname, '..'))
 
         self.jumpinfo = list(map(self.get_info, filelist))
+        import pprint
+        pprint.pprint(self.jumpinfo)
         self.curpath = path
 
         if self.settings.get('scan_fits_headers', False):
+            print("Scanning fits headers!")
             num_files = len(self.jumpinfo)
-            if num_files <= self.scan_limit:
+            if num_files <= self.settings.get('scan_limit'):
                 self.scan_fits()
             else:
                 self.logger.warning(
@@ -837,12 +812,12 @@ class LocalInterface(DRPInterface):
         self.logger.info("scanning files for header keywords...")
         start_time = time.time()
         for bnch in self.jumpinfo:
-            if (not bnch.type == 'fits') or (not have_astropy):
+            if (not bnch.type == 'fits'):
                 continue
             try:
                 with pyfits.open(bnch.path, 'readonly') as in_f:
                     kwds = {attrname: in_f[0].header.get(kwd, 'N/A')
-                            for attrname, kwd in self.keywords}
+                            for attrname, kwd in self.settings.get('keywords')}
                 bnch.update(kwds)
             except Exception as e:
                 self.logger.warning(
