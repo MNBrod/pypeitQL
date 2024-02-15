@@ -30,7 +30,6 @@ _patt = re.compile(r'"([^ "]+)"')
 class QLDisplay(GingaPlugin.GlobalPlugin):
 
     def __init__(self, fv):
-        print("Initializing QLDisplay")
         super(QLDisplay, self).__init__(fv)
 
         keywords = [('Object', 'OBJECT'),
@@ -342,10 +341,8 @@ class QLDisplay(GingaPlugin.GlobalPlugin):
             spatial_ids = slittrace.spat_id
             left_init = slittrace.left_init.T
             y_values_left = np.arange(slittrace.nspec)[::10]
-            print(len(y_values_left))
             right_init = slittrace.right_init.T
             y_values_right = np.arange(slittrace.nspec)[::-10]
-            print(len(y_values_right))
 
             for idx, spat_id in enumerate(spatial_ids):
                 self.slit_list.append_text("S" + str(spat_id))
@@ -353,10 +350,6 @@ class QLDisplay(GingaPlugin.GlobalPlugin):
                 x_vals = np.concatenate((left_init[idx][::10], right_init[idx][::-10]), axis=0) + (int(msc_idx) * slittrace.nspat)
                 y_vals = np.concatenate((y_values_left, y_values_right), axis=0)
                 slit_boundard_coords = (x_vals, y_vals)
-                print(f"Slit {spat_id}")
-                print(f"X len: {len(slit_boundard_coords[0])}")
-                print(f"Y len: {len(slit_boundard_coords[1])}")
-                print(f"nspec: {slittrace.nspec}")
                 poly = Polygon(list(zip(slit_boundard_coords[0], slit_boundard_coords[1])), color='green', linewidth=1, fill=True, fillalpha=.1)
                 
                 canvas = DrawingCanvas()
@@ -602,10 +595,6 @@ class LocalInterface(DRPInterface):
 
             tree_dict[entry_key] = bnch
 
-            import pprint
-            print(entry_key)
-            pprint.pprint(bnch)
-
         self.tree_dict = tree_dict
 
         # Do we need to resize column widths?
@@ -791,12 +780,10 @@ class LocalInterface(DRPInterface):
         filelist.insert(0, os.path.join(dirname, '..'))
 
         self.jumpinfo = list(map(self.get_info, filelist))
-        import pprint
-        pprint.pprint(self.jumpinfo)
+       
         self.curpath = path
 
         if self.settings.get('scan_fits_headers', False):
-            print("Scanning fits headers!")
             num_files = len(self.jumpinfo)
             if num_files <= self.settings.get('scan_limit'):
                 self.scan_fits()
