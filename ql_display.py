@@ -181,9 +181,7 @@ class QLDisplay(GingaPlugin.GlobalPlugin):
 
         self.treeview.add_callback('activated', self.table_dblclick_cb)
         self.treeview.add_callback('selected', self.table_selected_cb)
-
         self.entry.add_callback('activated', self.text_entry_cb)
-        
         self.btn_close.add_callback('activated', lambda w: self.close())
         self.btn_help.add_callback('activated', lambda w: self.help())
         self.btn_refresh.add_callback('activated', lambda w: self.refresh_cb())
@@ -534,6 +532,21 @@ class DRPInterface():
         }
     
     def reduce_slit(self):
+        raise NotImplementedError
+    
+    def item_dblclicked_cb(self, widget, res_dict):
+        raise NotImplementedError
+    
+    def item_selected_cb(widget, res_dict):
+        raise NotImplementedError
+    
+    def browse_cb(self, widget):
+        raise NotImplementedError
+    
+    def load_cb(self, text_entry_text, treeview_selected_dict):
+        raise NotImplementedError
+
+    def refresh():
         raise NotImplementedError
 
 class LocalInterface(DRPInterface):
